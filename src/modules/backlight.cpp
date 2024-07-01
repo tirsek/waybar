@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <memory>
 
 #include "util/backend_common.hpp"
@@ -16,6 +17,7 @@
 waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &config)
     : ALabel(config, "backlight", id, "{percent}%", 2),
       preferred_device_(config["device"].isString() ? config["device"].asString() : ""),
+      logarithmic_(config["logarithmic"].isBool() ? config["logarithmic"].asBool() : false),
       backend(interval_, [this] { dp.emit(); }) {
   dp.emit();
 
@@ -36,8 +38,13 @@ auto waybar::modules::Backlight::update() -> void {
 
     if (best->get_powered()) {
       event_box_.show();
+      const int actual = best->get_actual();
+      const int max = best->get_max();
       const uint8_t percent =
-          best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
+          max == 0 ? 100 : actual == 0 ? 0 : round(
+              logarithmic_ ? log(actual) * 100.0f / log(max)
+                           : actual * 100.0f / max
+          );
       std::string desc = fmt::format(fmt::runtime(format_), fmt::arg("percent", percent),
                                      fmt::arg("icon", getIcon(percent)));
       label_.set_markup(desc);
