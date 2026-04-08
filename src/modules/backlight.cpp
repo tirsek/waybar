@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <memory>
 
 #include "util/backend_common.hpp"
@@ -16,6 +17,7 @@
 waybar::modules::Backlight::Backlight(const std::string& id, const Json::Value& config)
     : ALabel(config, "backlight", id, "{percent}%", 2),
       preferred_device_(config["device"].isString() ? config["device"].asString() : ""),
+      cubic_(config["cubic"].isBool() ? config["cubic"].asBool() : false),
       backend(interval_, [this] { dp.emit(); }) {
   // Set up scroll handler
   event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
@@ -35,8 +37,13 @@ auto waybar::modules::Backlight::update() -> void {
     if (best->get_powered()) {
       event_box_.show();
 
+      const int actual = best->get_actual();
+      const int max = best->get_max();
       const uint8_t percent =
-          best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
+          max == 0 ? 100 : round(
+              cubic_ ? cbrtf((float)actual / (float)max) * 100.0f
+                     : actual * 100.0f / max
+          );
 
       const uint8_t percent_exp =
           best->get_max() == 0

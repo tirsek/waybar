@@ -24,6 +24,7 @@ class Backlight : public ALabel {
   bool handleScroll(GdkEventScroll* e) override;
 
   const std::string preferred_device_;
+  bool cubic_;
 
   std::string previous_format_;
 
